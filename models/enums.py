@@ -5,7 +5,7 @@ class TaskStatus(str, Enum):
     COMPLETED = "completed"
     REOPENED = "reopened"
 class ProjectStatus(str, Enum):
-    NOT_STARTED = "notstarted"
+    NOT_STARTED = "not_started"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
     OVERDUE = "overdue"    
