@@ -1,10 +1,12 @@
 from models.enums import TaskStatus
 from datetime import datetime, date
+import uuid
 
 class Task:
-    def __init__(self, title, weight, progress_percent=0, status=TaskStatus.TODO, completed_at=None, deadline=None):
+    def __init__(self, title, weight, progress_percent=0, status=TaskStatus.TODO, completed_at=None, deadline=None, id = None):
         if weight <= 0:
-            raise ValueError("Task Weight Must Be Greater That")
+            raise ValueError("Task Weight Must Be Greater Than Zero")
+        self.id = id if id is not None else str(uuid.uuid4())
         self.title = title
         self.weight = weight
         self.progress_percent = progress_percent
@@ -62,6 +64,7 @@ class Task:
 
     def to_dict(self):
         return {
+            "id": self.id,
             "title": self.title,
             "weight": self.weight,
             "progress_percent": self.progress_percent,
@@ -73,6 +76,7 @@ class Task:
     @classmethod
     def from_dict(cls, data):
         return cls(
+            id=data.get("id"),
             title=data["title"],
             weight=data["weight"],
             progress_percent=data["progress_percent"],
