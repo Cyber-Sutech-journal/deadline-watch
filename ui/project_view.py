@@ -1,8 +1,71 @@
+from services import calculator
 import customtkinter as ctk
 
+
 class ProjectView(ctk.CTkFrame):
-    def __init__(self,parent):
+    def __init__(self,parent,project,project_manager,storage):
         super().__init__(parent)
+
+        self.project=project
+        self.project_manager=project_manager
+        self.storage=storage
+
+        value=slider.get()
+        self.project.update_task(
+            task.id,
+            new_progress=value
+        )
+        self.project.update_task(
+            task.id,
+            new_progress=value
+        )
+        self.storage.save_projects(
+            self.project_manager.get_all_projects()
+        ) 
+        task.complete()
+
+        self.storage.save_projects(
+            self.project_manager.get_all_projects()
+        )
+
+        self.refresh_tasks()
+        
+        task.reopen()
+        self.storage.save_projects(
+            self.project_manager.get_all_projects()
+        )
+
+        self.refresh_tasks()
+
+        self.project.remove_task(task.id)
+
+        self.storage.save_projects(
+            self.project_manager.get_all_projects()
+        )
+
+        self.refresh_tasks()
+
+        self.project.add_task(task)
+
+        self.storage.save_projects(
+            self.project_manager.get_all_projects()
+        )
+
+        self.refresh_tasks()
+
+        self.project.update_task(
+            task.id,
+            new_title=new_title,
+            new_weight=new_weight,
+            new_deadline=new_deadline,
+            new_progress=new_progress
+        )
+
+        self.storage.save_projects(
+            self.project_manager.get_all_projects()
+        )
+
+        self.refresh_tasks()
 
         self.project_title=ctk.CTkLabel(
             self,
@@ -13,7 +76,7 @@ class ProjectView(ctk.CTkFrame):
             pady=30
         )
 
-        self.task_list=ctk.CTkScrolllableFrame(
+        self.task_list=ctk.CTkScrollableFrame(
             self
         )    
 
@@ -82,4 +145,4 @@ class ProjectView(ctk.CTkFrame):
         self.reopen_task_button.pack(
             padx=30,
             pady=10
-        )                                   
+        )                             
