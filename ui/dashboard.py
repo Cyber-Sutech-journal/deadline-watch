@@ -1,109 +1,136 @@
-# ui/dashboard.py
-
-import tkinter as tk
 import customtkinter as ctk
 from datetime import date
 
+from services.calculator import Calculator
 
-BG_COLOR = "#0F1117"
-CARD_COLOR = "#181E28"
-LATEST_CARD_COLOR = "#202837"
-PRIMARY_COLOR = "#6C63FF"
-HOVER_COLOR = "#8178FF"
-TEXT_COLOR = "#F5F7FA"
-MUTED_COLOR = "#8E97A8"
-DANGER_COLOR = "#FF5F6D"
-SUCCESS_COLOR = "#4ADE80"
-WARNING_COLOR = "#FBBF24"
+
+# ============================================================
+# COLORS
+# ============================================================
+
+BG_COLOR = "#0A0E13"
+CARD_COLOR = "#171E27"
+
+TEXT_COLOR = "#F4F7FB"
+MUTED_COLOR = "#97A3B3"
+
+PRIMARY = "#6C63FF"
+PRIMARY_HOVER = "#8078FF"
+
+GREEN = "#22C55E"
+GREEN_BG = "#173923"
+
+YELLOW = "#F59E0B"
+YELLOW_BG = "#44340F"
+
+RED = "#EF4444"
+RED_BG = "#441C20"
 
 
 class Dashboard(ctk.CTkFrame):
-    def __init__(self, parent, app, manager):
+
+    def __init__(
+        self,
+        parent,
+        project_manager,
+        on_open_project,
+        on_edit_project,
+        on_delete_project,
+        on_add_project
+    ):
+
         super().__init__(
             parent,
-            fg_color=BG_COLOR,
-            corner_radius=0
+            fg_color=BG_COLOR
         )
 
-        self.app = app
-        self.manager = manager
+        self.manager = project_manager
 
-        self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(1, weight=1)
+        self.on_open_project = on_open_project
+        self.on_edit_project = on_edit_project
+        self.on_delete_project = on_delete_project
+        self.on_add_project = on_add_project
 
-        self._build_header()
-        self._build_body()
-
+        self.build_ui()
         self.refresh()
 
-    # =========================================================
-    # HEADER
-    # This stays fixed while the project list scrolls.
-    # =========================================================
+    # ========================================================
+    # UI
+    # ========================================================
 
-    def _build_header(self):
-        self.header = ctk.CTkFrame(
+    def build_ui(self):
+
+        header = ctk.CTkFrame(
             self,
-            fg_color=BG_COLOR,
-            corner_radius=0
-        )
-        self.header.grid(
-            row=0,
-            column=0,
-            sticky="ew",
-            padx=12,
-            pady=(5, 0)
-        )
-
-        self.header.grid_columnconfigure(0, weight=1)
-
-        top = ctk.CTkFrame(
-            self.header,
             fg_color="transparent"
         )
-        top.grid(
-            row=0,
-            column=0,
-            sticky="ew"
-        )
-        top.grid_columnconfigure(0, weight=1)
 
-        ctk.CTkLabel(
-            top,
-            text="Dashboard",
-            font=ctk.CTkFont(size=30, weight="bold"),
+        header.pack(
+            fill="x",
+            padx=35,
+            pady=(30, 5)
+        )
+
+        title = ctk.CTkLabel(
+            header,
+            text="Project Dashboard",
+            font=ctk.CTkFont(
+                size=35,
+                weight="bold"
+            ),
             text_color=TEXT_COLOR
-        ).grid(
-            row=0,
-            column=0,
-            sticky="w"
         )
 
-        self.date_label = ctk.CTkLabel(
-            top,
+        title.pack(
+            side="left"
+        )
+
+        add_button = ctk.CTkButton(
+            header,
+            text="+  New Project",
+            command=self.on_add_project,
+            width=180,
+            height=50,
+            corner_radius=12,
+            fg_color=PRIMARY,
+            hover_color=PRIMARY_HOVER,
+            font=ctk.CTkFont(
+                size=16,
+                weight="bold"
+            )
+        )
+
+        add_button.pack(
+            side="right"
+        )
+
+        self.subtitle = ctk.CTkLabel(
+            self,
             text="",
-            font=ctk.CTkFont(size=12),
+            font=ctk.CTkFont(
+                size=15
+            ),
             text_color=MUTED_COLOR
         )
-        self.date_label.grid(
-            row=1,
-            column=0,
-            sticky="w",
-            pady=(2, 0)
+
+        self.subtitle.pack(
+            anchor="w",
+            padx=35
         )
 
-        self._build_stats()
+        # ----------------------------------------------------
+        # Statistics
+        # ----------------------------------------------------
 
-    def _build_stats(self):
         self.stats_frame = ctk.CTkFrame(
-            self.header,
+            self,
             fg_color="transparent"
         )
-        self.stats_frame.grid(
-            row=1,
-            column=0,
-            sticky="ew",
-            pady=(18, 14)
+
+        self.stats_frame.pack(
+            fill="x",
+            padx=30,
+            pady=25
         )
 
         for i in range(4):
@@ -112,891 +139,712 @@ class Dashboard(ctk.CTkFrame):
                 weight=1
             )
 
-        self.stat_labels = {}
+        self.projects_value = self.create_stat_card(
+            self.stats_frame,
+            0,
+            "PROJECTS"
+        )
 
-        stats = [
-            ("projects", "PROJECTS"),
-            ("tasks", "TASKS"),
-            ("completed", "COMPLETED"),
-            ("overdue", "OVERDUE"),
-        ]
+        self.tasks_value = self.create_stat_card(
+            self.stats_frame,
+            1,
+            "TASKS"
+        )
 
-        for index, (key, title) in enumerate(stats):
-            card = ctk.CTkFrame(
-                self.stats_frame,
-                fg_color=CARD_COLOR,
-                corner_radius=12,
-                height=82
-            )
-            card.grid(
-                row=0,
-                column=index,
-                sticky="ew",
-                padx=4
-            )
-            card.grid_propagate(False)
+        self.completed_value = self.create_stat_card(
+            self.stats_frame,
+            2,
+            "COMPLETED TASKS"
+        )
 
-            value = ctk.CTkLabel(
-                card,
-                text="0",
-                font=ctk.CTkFont(size=25, weight="bold"),
-                text_color=TEXT_COLOR
-            )
-            value.pack(
-                anchor="w",
-                padx=15,
-                pady=(11, 0)
-            )
+        self.overdue_value = self.create_stat_card(
+            self.stats_frame,
+            3,
+            "OVERDUE TASKS"
+        )
 
-            ctk.CTkLabel(
-                card,
-                text=title,
-                font=ctk.CTkFont(size=10, weight="bold"),
-                text_color=MUTED_COLOR
-            ).pack(
-                anchor="w",
-                padx=15
-            )
+        # ----------------------------------------------------
+        # Projects section
+        # ----------------------------------------------------
 
-            self.stat_labels[key] = value
-
-    # =========================================================
-    # BODY
-    # =========================================================
-
-    def _build_body(self):
-        self.body = ctk.CTkScrollableFrame(
+        section_title = ctk.CTkLabel(
             self,
-            fg_color="transparent",
-            corner_radius=0
-        )
-        self.body.grid(
-            row=1,
-            column=0,
-            sticky="nsew",
-            padx=12,
-            pady=(0, 5)
+            text="Your Projects",
+            font=ctk.CTkFont(
+                size=25,
+                weight="bold"
+            ),
+            text_color=TEXT_COLOR
         )
 
-        self.body.grid_columnconfigure(0, weight=1)
-
-    # =========================================================
-    # REFRESH
-    # =========================================================
-
-    def refresh(self):
-        self.date_label.configure(
-            text=date.today().strftime("%A, %d %B %Y")
+        section_title.pack(
+            anchor="w",
+            padx=35,
+            pady=(0, 10)
         )
 
-        projects = self.manager.get_all_projects()
-
-        for widget in self.body.winfo_children():
-            widget.destroy()
-
-        total_tasks = sum(
-            len(project.tasks)
-            for project in projects
-        )
-
-        completed_tasks = sum(
-            len(project.get_completed_tasks())
-            for project in projects
-        )
-
-        overdue_tasks = sum(
-            1
-            for project in projects
-            for task in project.tasks
-            if task.is_overdue(date.today())
-        )
-
-        self.stat_labels["projects"].configure(
-            text=str(len(projects))
-        )
-        self.stat_labels["tasks"].configure(
-            text=str(total_tasks)
-        )
-        self.stat_labels["completed"].configure(
-            text=str(completed_tasks)
-        )
-        self.stat_labels["overdue"].configure(
-            text=str(overdue_tasks)
-        )
-
-        if not projects:
-            self._show_empty()
-            return
-
-        projects = sorted(
-            projects,
-            key=lambda p: p.deadline
-        )
-
-        latest_project = max(
-            projects,
-            key=lambda p: (
-                p.start_date,
-                p.deadline
-            )
-        )
-
-        latest_container = ctk.CTkFrame(
-            self.body,
+        self.projects_scroll = ctk.CTkScrollableFrame(
+            self,
             fg_color="transparent"
         )
-        latest_container.grid(
+
+        self.projects_scroll.pack(
+            fill="both",
+            expand=True,
+            padx=25,
+            pady=(0, 20)
+        )
+
+    # ========================================================
+    # STAT CARD
+    # ========================================================
+
+    def create_stat_card(
+        self,
+        parent,
+        column,
+        title
+    ):
+
+        card = ctk.CTkFrame(
+            parent,
+            fg_color=CARD_COLOR,
+            corner_radius=16,
+            height=115
+        )
+
+        card.grid(
             row=0,
-            column=0,
-            sticky="ew",
-            padx=5,
-            pady=(4, 14)
-        )
-        latest_container.grid_columnconfigure(0, weight=1)
-
-        self._create_project_card(
-            latest_container,
-            latest_project,
-            latest=True
+            column=column,
+            padx=7,
+            sticky="nsew"
         )
 
-        others_label = ctk.CTkLabel(
-            self.body,
-            text="ALL PROJECTS",
+        card.grid_propagate(
+            False
+        )
+
+        label = ctk.CTkLabel(
+            card,
+            text=title,
             font=ctk.CTkFont(
-                size=11,
+                size=12,
                 weight="bold"
             ),
             text_color=MUTED_COLOR
         )
-        others_label.grid(
-            row=1,
-            column=0,
-            sticky="w",
-            padx=10,
-            pady=(4, 7)
+
+        label.pack(
+            anchor="w",
+            padx=20,
+            pady=(17, 0)
         )
 
-        others = [
-            project
-            for project in projects
-            if project.id != latest_project.id
-        ]
+        value = ctk.CTkLabel(
+            card,
+            text="0",
+            font=ctk.CTkFont(
+                size=34,
+                weight="bold"
+            ),
+            text_color=TEXT_COLOR
+        )
 
-        for index, project in enumerate(
-            others,
-            start=2
-        ):
-            self._create_project_card(
-                self.body,
-                project,
-                latest=False,
-                row=index
+        value.pack(
+            anchor="w",
+            padx=20,
+            pady=(0, 10)
+        )
+
+        return value
+
+    # ========================================================
+    # PROJECT COLOR
+    # ========================================================
+
+    def get_project_colors(self, project):
+
+        status = Calculator.get_project_status(
+            project
+        )
+
+        disaster = Calculator.calculate_disaster_index(
+            project
+        )
+
+        # Completed = Green
+        if status == "completed":
+            return GREEN, GREEN_BG
+
+        # Overdue = Red
+        if status == "overdue":
+            return RED, RED_BG
+
+        # Not started = Yellow
+        if status == "not_started":
+            return YELLOW, YELLOW_BG
+
+        # In progress depends on disaster index.
+        if disaster > 70:
+            return RED, RED_BG
+
+        if disaster > 30:
+            return YELLOW, YELLOW_BG
+
+        return GREEN, GREEN_BG
+
+    # ========================================================
+    # REFRESH
+    # ========================================================
+
+    def refresh(self):
+
+        for widget in self.projects_scroll.winfo_children():
+            widget.destroy()
+
+        projects = self.manager.get_all_projects()
+
+        total_tasks = 0
+        completed_tasks = 0
+        overdue_tasks = 0
+
+        today = date.today()
+
+        for project in projects:
+
+            total_tasks += len(
+                project.tasks
             )
 
-    # =========================================================
-    # EMPTY
-    # =========================================================
+            completed_tasks += len(
+                project.get_completed_tasks()
+            )
 
-    def _show_empty(self):
-        container = ctk.CTkFrame(
-            self.body,
+            for task in project.tasks:
+
+                if task.is_overdue(today):
+                    overdue_tasks += 1
+
+        self.projects_value.configure(
+            text=str(len(projects))
+        )
+
+        self.tasks_value.configure(
+            text=str(total_tasks)
+        )
+
+        self.completed_value.configure(
+            text=str(completed_tasks)
+        )
+
+        self.overdue_value.configure(
+            text=str(overdue_tasks)
+        )
+
+        self.subtitle.configure(
+            text=(
+                f"{len(projects)} project(s)   •   "
+                f"{total_tasks} task(s)   •   "
+                f"{completed_tasks} completed"
+            )
+        )
+
+        if not projects:
+            self.show_empty_state()
+            return
+
+        for project in projects:
+            self.create_project_card(
+                project
+            )
+
+    # ========================================================
+    # EMPTY STATE
+    # ========================================================
+
+    def show_empty_state(self):
+
+        card = ctk.CTkFrame(
+            self.projects_scroll,
             fg_color=CARD_COLOR,
             corner_radius=18
         )
-        container.grid(
-            row=0,
-            column=0,
-            sticky="ew",
-            padx=8,
-            pady=30
+
+        card.pack(
+            fill="x",
+            padx=15,
+            pady=20
         )
 
-        ctk.CTkLabel(
-            container,
-            text="No projects yet",
-            font=ctk.CTkFont(size=25, weight="bold"),
+        title = ctk.CTkLabel(
+            card,
+            text="No Projects Yet",
+            font=ctk.CTkFont(
+                size=28,
+                weight="bold"
+            ),
             text_color=TEXT_COLOR
-        ).pack(
-            pady=(45, 7)
         )
 
-        ctk.CTkLabel(
-            container,
-            text="Create your first project and start watching the deadline.",
-            font=ctk.CTkFont(size=13),
+        title.pack(
+            pady=(45, 5)
+        )
+
+        subtitle = ctk.CTkLabel(
+            card,
+            text="Create your first project to start tracking progress.",
+            font=ctk.CTkFont(
+                size=16
+            ),
             text_color=MUTED_COLOR
-        ).pack(
-            pady=(0, 20)
         )
 
-        ctk.CTkButton(
-            container,
-            text="＋  Create Project",
-            command=self.app.add_project_view,
+        subtitle.pack(
+            pady=(0, 25)
+        )
+
+        button = ctk.CTkButton(
+            card,
+            text="+ Create Project",
+            command=self.on_add_project,
             width=190,
-            height=44,
-            fg_color=PRIMARY_COLOR,
-            hover_color=HOVER_COLOR
-        ).pack(
-            pady=(0, 45)
+            height=50,
+            corner_radius=12,
+            fg_color=PRIMARY,
+            hover_color=PRIMARY_HOVER,
+            font=ctk.CTkFont(
+                size=16,
+                weight="bold"
+            )
         )
 
-    # =========================================================
+        button.pack(
+            pady=(0, 40)
+        )
+
+    # ========================================================
     # PROJECT CARD
-    # =========================================================
+    # ========================================================
 
-    def _create_project_card(
-        self,
-        parent,
-        project,
-        latest=False,
-        row=None
-    ):
-        today = date.today()
+    def create_project_card(self, project):
 
-        if latest:
-            card = ctk.CTkFrame(
-                parent,
-                fg_color=LATEST_CARD_COLOR,
-                corner_radius=18,
-                border_width=1,
-                border_color="#30394A"
-            )
-        else:
-            card = ctk.CTkFrame(
-                parent,
-                fg_color=CARD_COLOR,
-                corner_radius=15
-            )
+        progress = Calculator.calculate_project_progress(
+            project
+        )
 
-        if row is not None:
-            card.grid(
-                row=row,
-                column=0,
-                sticky="ew",
-                padx=5,
-                pady=7
-            )
-        else:
-            card.pack(
-                fill="x",
-                padx=5
-            )
+        time_progress = Calculator.calculate_time_progress(
+            project
+        )
 
-        card.grid_columnconfigure(0, weight=1)
+        remaining_days = Calculator.calculate_time_remaining(
+            project
+        )
 
-        # -----------------------------------------------------
+        schedule_gap = Calculator.calculate_schedule_gap(
+            project
+        )
+
+        disaster = Calculator.calculate_disaster_index(
+            project
+        )
+
+        status = Calculator.get_project_status(
+            project
+        )
+
+        accent, status_background = self.get_project_colors(
+            project
+        )
+
+        card = ctk.CTkFrame(
+            self.projects_scroll,
+            fg_color=status_background,
+            corner_radius=18,
+            border_width=2,
+            border_color=accent
+        )
+
+        card.pack(
+            fill="x",
+            padx=15,
+            pady=9
+        )
+
+        # ----------------------------------------------------
         # TOP
-        # -----------------------------------------------------
+        # ----------------------------------------------------
 
         top = ctk.CTkFrame(
             card,
             fg_color="transparent"
         )
-        top.grid(
-            row=0,
-            column=0,
-            sticky="ew",
-            padx=20 if latest else 17,
-            pady=(18 if latest else 15, 5)
-        )
-        top.grid_columnconfigure(0, weight=1)
 
-        title_area = ctk.CTkFrame(
+        top.pack(
+            fill="x",
+            padx=22,
+            pady=(20, 5)
+        )
+
+        title_frame = ctk.CTkFrame(
             top,
             fg_color="transparent"
         )
-        title_area.grid(
-            row=0,
-            column=0,
-            sticky="w"
-        )
 
-        if latest:
-            ctk.CTkLabel(
-                title_area,
-                text="LATEST PROJECT",
-                font=ctk.CTkFont(
-                    size=10,
-                    weight="bold"
-                ),
-                text_color=PRIMARY_COLOR
-            ).pack(
-                anchor="w",
-                pady=(0, 2)
-            )
+        title_frame.pack(
+            side="left",
+            fill="x",
+            expand=True
+        )
 
         title = ctk.CTkLabel(
-            title_area,
+            title_frame,
             text=project.name,
             font=ctk.CTkFont(
-                size=24 if latest else 19,
-                weight="bold"
-            ),
-            text_color=TEXT_COLOR,
-            anchor="w"
-        )
-        title.pack(anchor="w")
-
-        if project.description:
-            ctk.CTkLabel(
-                title_area,
-                text=project.description,
-                font=ctk.CTkFont(size=12),
-                text_color=MUTED_COLOR,
-                anchor="w",
-                justify="left"
-            ).pack(
-                anchor="w",
-                pady=(3, 0)
-            )
-
-        menu_button = ctk.CTkButton(
-            top,
-            text="⋮",
-            width=38,
-            height=38,
-            corner_radius=10,
-            fg_color="transparent",
-            hover_color="#303846",
-            text_color=TEXT_COLOR,
-            font=ctk.CTkFont(size=22, weight="bold")
-        )
-        menu_button.grid(
-            row=0,
-            column=1,
-            sticky="ne",
-            padx=(10, 0)
-        )
-
-        menu_button.configure(
-            command=lambda b=menu_button, p=project:
-            self.show_project_menu(p, b)
-        )
-
-        # -----------------------------------------------------
-        # MAIN METRICS
-        # -----------------------------------------------------
-
-        metrics = self._calculate_metrics(project)
-
-        metric_frame = ctk.CTkFrame(
-            card,
-            fg_color="transparent"
-        )
-        metric_frame.grid(
-            row=1,
-            column=0,
-            sticky="ew",
-            padx=20 if latest else 17,
-            pady=(8, 5)
-        )
-
-        metric_frame.grid_columnconfigure(
-            0,
-            weight=1
-        )
-        metric_frame.grid_columnconfigure(
-            1,
-            weight=1
-        )
-
-        # PROJECT PROGRESS
-        progress_box = ctk.CTkFrame(
-            metric_frame,
-            fg_color="#151A23",
-            corner_radius=13
-        )
-        progress_box.grid(
-            row=0,
-            column=0,
-            sticky="ew",
-            padx=(0, 5)
-        )
-
-        ctk.CTkLabel(
-            progress_box,
-            text="PROJECT PROGRESS",
-            font=ctk.CTkFont(
-                size=10,
-                weight="bold"
-            ),
-            text_color=MUTED_COLOR
-        ).pack(
-            anchor="w",
-            padx=15,
-            pady=(12, 0)
-        )
-
-        progress_percent = ctk.CTkLabel(
-            progress_box,
-            text=f"{metrics['progress']:.0f}%",
-            font=ctk.CTkFont(
-                size=36 if latest else 30,
+                size=25,
                 weight="bold"
             ),
             text_color=TEXT_COLOR
         )
-        progress_percent.pack(
+
+        title.pack(
+            anchor="w"
+        )
+
+        description = project.description.strip()
+
+        if not description:
+            description = "No description"
+
+        desc = ctk.CTkLabel(
+            title_frame,
+            text=description,
+            font=ctk.CTkFont(
+                size=14
+            ),
+            text_color=MUTED_COLOR
+        )
+
+        desc.pack(
             anchor="w",
-            padx=15,
-            pady=(0, 2)
+            pady=(4, 0)
+        )
+
+        status_map = {
+            "not_started": "NOT STARTED",
+            "in_progress": "IN PROGRESS",
+            "completed": "COMPLETED",
+            "overdue": "OVERDUE"
+        }
+
+        status_badge = ctk.CTkLabel(
+            top,
+            text=status_map.get(
+                status,
+                status.upper()
+            ),
+            width=170,
+            height=42,
+            corner_radius=12,
+            fg_color=status_background,
+            text_color=accent,
+            font=ctk.CTkFont(
+                size=13,
+                weight="bold"
+            )
+        )
+
+        status_badge.pack(
+            side="right"
+        )
+
+        # ----------------------------------------------------
+        # PROGRESS
+        # ----------------------------------------------------
+
+        progress_area = ctk.CTkFrame(
+            card,
+            fg_color="transparent"
+        )
+
+        progress_area.pack(
+            fill="x",
+            padx=22,
+            pady=(15, 5)
+        )
+
+        project_progress_title = ctk.CTkLabel(
+            progress_area,
+            text="PROJECT PROGRESS",
+            font=ctk.CTkFont(
+                size=13,
+                weight="bold"
+            ),
+            text_color=MUTED_COLOR
+        )
+
+        project_progress_title.pack(
+            anchor="w"
+        )
+
+        project_progress_value = ctk.CTkLabel(
+            progress_area,
+            text=f"{progress:.0f}%",
+            font=ctk.CTkFont(
+                size=42,
+                weight="bold"
+            ),
+            text_color=accent
+        )
+
+        project_progress_value.pack(
+            anchor="w"
         )
 
         progress_bar = ctk.CTkProgressBar(
-            progress_box,
-            height=9,
-            corner_radius=5
+            progress_area,
+            height=16,
+            corner_radius=8,
+            fg_color="#2C3541",
+            progress_color=accent
         )
+
         progress_bar.pack(
             fill="x",
-            padx=15,
-            pady=(2, 5)
+            pady=(4, 0)
         )
+
         progress_bar.set(
-            metrics["progress"] / 100
+            progress / 100
         )
 
-        ctk.CTkLabel(
-            progress_box,
-            text=(
-                f"{metrics['completed_tasks']} / "
-                f"{metrics['total_tasks']} tasks completed"
+        # ----------------------------------------------------
+        # METRICS
+        # ----------------------------------------------------
+
+        metrics = ctk.CTkFrame(
+            card,
+            fg_color="transparent"
+        )
+
+        metrics.pack(
+            fill="x",
+            padx=18,
+            pady=15
+        )
+
+        for i in range(4):
+            metrics.grid_columnconfigure(
+                i,
+                weight=1
+            )
+
+        self.create_metric(
+            metrics,
+            0,
+            "TIME PROGRESS",
+            f"{time_progress:.0f}%"
+        )
+
+        if remaining_days < 0:
+            remaining_text = (
+                f"{abs(remaining_days)}d overdue"
+            )
+        else:
+            remaining_text = (
+                f"{remaining_days} day(s)"
+            )
+
+        self.create_metric(
+            metrics,
+            1,
+            "TIME REMAINING",
+            remaining_text
+        )
+
+        gap_text = (
+            f"+{schedule_gap:.1f}%"
+            if schedule_gap > 0
+            else f"{schedule_gap:.1f}%"
+        )
+
+        self.create_metric(
+            metrics,
+            2,
+            "SCHEDULE GAP",
+            gap_text
+        )
+
+        self.create_metric(
+            metrics,
+            3,
+            "DISASTER INDEX",
+            f"{disaster:.0f}"
+        )
+
+        # ----------------------------------------------------
+        # FOOTER
+        # ----------------------------------------------------
+
+        footer = ctk.CTkFrame(
+            card,
+            fg_color="transparent"
+        )
+
+        footer.pack(
+            fill="x",
+            padx=22,
+            pady=(0, 20)
+        )
+
+        if schedule_gap <= 0:
+            schedule_text = "On schedule"
+        else:
+            schedule_text = (
+                f"{schedule_gap:.1f}% behind schedule"
+            )
+
+        schedule_label = ctk.CTkLabel(
+            footer,
+            text=schedule_text,
+            font=ctk.CTkFont(
+                size=13,
+                weight="bold"
             ),
-            font=ctk.CTkFont(size=11),
-            text_color=MUTED_COLOR
-        ).pack(
-            anchor="w",
-            padx=15,
-            pady=(0, 12)
+            text_color=accent
         )
 
-        # TIME PASSED
-        time_box = ctk.CTkFrame(
-            metric_frame,
-            fg_color="#151A23",
+        schedule_label.pack(
+            side="left"
+        )
+
+        buttons = ctk.CTkFrame(
+            footer,
+            fg_color="transparent"
+        )
+
+        buttons.pack(
+            side="right"
+        )
+
+        open_button = ctk.CTkButton(
+            buttons,
+            text="Open",
+            command=lambda pid=project.id:
+            self.on_open_project(pid),
+            width=105,
+            height=43,
+            corner_radius=10,
+            fg_color=PRIMARY,
+            hover_color=PRIMARY_HOVER,
+            font=ctk.CTkFont(
+                size=14,
+                weight="bold"
+            )
+        )
+
+        open_button.pack(
+            side="left",
+            padx=4
+        )
+
+        edit_button = ctk.CTkButton(
+            buttons,
+            text="Edit",
+            command=lambda pid=project.id:
+            self.on_edit_project(pid),
+            width=100,
+            height=43,
+            corner_radius=10,
+            fg_color="#283342",
+            hover_color="#374555",
+            font=ctk.CTkFont(
+                size=14,
+                weight="bold"
+            )
+        )
+
+        edit_button.pack(
+            side="left",
+            padx=4
+        )
+
+        delete_button = ctk.CTkButton(
+            buttons,
+            text="Delete",
+            command=lambda pid=project.id:
+            self.on_delete_project(pid),
+            width=100,
+            height=43,
+            corner_radius=10,
+            fg_color=RED_BG,
+            hover_color="#63242B",
+            text_color="#FF9AA2",
+            font=ctk.CTkFont(
+                size=14,
+                weight="bold"
+            )
+        )
+
+        delete_button.pack(
+            side="left",
+            padx=(4, 0)
+        )
+
+    # ========================================================
+    # METRIC
+    # ========================================================
+
+    def create_metric(
+        self,
+        parent,
+        column,
+        title,
+        value
+    ):
+
+        card = ctk.CTkFrame(
+            parent,
+            fg_color="#121921",
             corner_radius=13
         )
-        time_box.grid(
+
+        card.grid(
             row=0,
-            column=1,
-            sticky="ew",
-            padx=(5, 0)
+            column=column,
+            padx=5,
+            sticky="nsew"
         )
 
-        ctk.CTkLabel(
-            time_box,
-            text="TIME PASSED",
+        label = ctk.CTkLabel(
+            card,
+            text=title,
             font=ctk.CTkFont(
                 size=10,
                 weight="bold"
             ),
             text_color=MUTED_COLOR
-        ).pack(
+        )
+
+        label.pack(
             anchor="w",
-            padx=15,
-            pady=(12, 0)
+            padx=13,
+            pady=(11, 0)
         )
 
-        time_percent = ctk.CTkLabel(
-            time_box,
-            text=f"{metrics['time_percent']:.0f}%",
+        value_label = ctk.CTkLabel(
+            card,
+            text=value,
             font=ctk.CTkFont(
-                size=36 if latest else 30,
+                size=21,
                 weight="bold"
             ),
-            text_color=(
-                DANGER_COLOR
-                if metrics["time_percent"] > metrics["progress"]
-                else TEXT_COLOR
-            )
+            text_color=TEXT_COLOR
         )
-        time_percent.pack(
+
+        value_label.pack(
             anchor="w",
-            padx=15,
-            pady=(0, 2)
+            padx=13,
+            pady=(1, 11)
         )
 
-        time_bar = ctk.CTkProgressBar(
-            time_box,
-            height=9,
-            corner_radius=5
-        )
-        time_bar.pack(
-            fill="x",
-            padx=15,
-            pady=(2, 5)
-        )
-        time_bar.set(
-            metrics["time_percent"] / 100
-        )
-
-        ctk.CTkLabel(
-            time_box,
-            text=metrics["time_text"],
-            font=ctk.CTkFont(size=11),
-            text_color=MUTED_COLOR
-        ).pack(
-            anchor="w",
-            padx=15,
-            pady=(0, 12)
-        )
-
-        # -----------------------------------------------------
-        # DEADLINE / HEALTH
-        # -----------------------------------------------------
-
-        deadline_row = ctk.CTkFrame(
-            card,
-            fg_color="transparent"
-        )
-        deadline_row.grid(
-            row=2,
-            column=0,
-            sticky="ew",
-            padx=20 if latest else 17,
-            pady=(7, 5)
-        )
-        deadline_row.grid_columnconfigure(1, weight=1)
-
-        deadline_label = self._deadline_text(
-            project,
-            today
-        )
-
-        ctk.CTkLabel(
-            deadline_row,
-            text="DEADLINE",
-            font=ctk.CTkFont(
-                size=10,
-                weight="bold"
-            ),
-            text_color=MUTED_COLOR
-        ).grid(
-            row=0,
-            column=0,
-            sticky="w"
-        )
-
-        ctk.CTkLabel(
-            deadline_row,
-            text=deadline_label,
-            font=ctk.CTkFont(
-                size=13,
-                weight="bold"
-            ),
-            text_color=(
-                DANGER_COLOR
-                if project.deadline < today
-                else TEXT_COLOR
-            )
-        ).grid(
-            row=0,
-            column=1,
-            sticky="w",
-            padx=12
-        )
-
-        status_text = self._health_text(metrics)
-
-        ctk.CTkLabel(
-            deadline_row,
-            text=status_text,
-            font=ctk.CTkFont(
-                size=11,
-                weight="bold"
-            ),
-            text_color=self._health_color(metrics)
-        ).grid(
-            row=0,
-            column=2,
-            sticky="e"
-        )
-
-        # -----------------------------------------------------
-        # ACTIONS
-        # -----------------------------------------------------
-
-        actions = ctk.CTkFrame(
-            card,
-            fg_color="transparent"
-        )
-        actions.grid(
-            row=3,
-            column=0,
-            sticky="ew",
-            padx=20 if latest else 17,
-            pady=(8, 18 if latest else 15)
-        )
-
-        actions.grid_columnconfigure(
-            0,
-            weight=2
-        )
-        actions.grid_columnconfigure(
-            1,
-            weight=1
-        )
-
-        ctk.CTkButton(
-            actions,
-            text="↻  Update Progress",
-            command=lambda p=project:
-            self.app.update_project_progress(p.id),
-            height=44 if latest else 40,
-            fg_color=PRIMARY_COLOR,
-            hover_color=HOVER_COLOR,
-            font=ctk.CTkFont(
-                size=13,
-                weight="bold"
-            )
-        ).grid(
-            row=0,
-            column=0,
-            sticky="ew",
-            padx=(0, 5)
-        )
-
-        ctk.CTkButton(
-            actions,
-            text="Edit",
-            command=lambda p=project:
-            self.app.edit_project_view(p.id),
-            height=44 if latest else 40,
-            fg_color="#252C38",
-            hover_color="#323B4B",
-            font=ctk.CTkFont(
-                size=12,
-                weight="bold"
-            )
-        ).grid(
-            row=0,
-            column=1,
-            sticky="ew",
-            padx=(5, 0)
-        )
-
-        # Entire project card opens the detailed project view.
-        self._bind_card_click(
-            card,
-            lambda p=project:
-            self.app.open_project_view(p.id),
-            ignored_widgets={
-                menu_button
-            }
-        )
-
-    # =========================================================
-    # PROJECT MENU
-    # =========================================================
-
-    def show_project_menu(self, project, button):
-        menu = tk.Menu(
-            self,
-            tearoff=False,
-            bg="#1B202B",
-            fg=TEXT_COLOR,
-            activebackground="#303846",
-            activeforeground=TEXT_COLOR,
-            relief="flat",
-            borderwidth=0,
-            font=("Arial", 10)
-        )
-
-        menu.add_command(
-            label="Update Progress",
-            command=lambda:
-            self.app.update_project_progress(project.id)
-        )
-
-        menu.add_command(
-            label="Edit Project",
-            command=lambda:
-            self.app.edit_project_view(project.id)
-        )
-
-        menu.add_separator()
-
-        menu.add_command(
-            label="Delete Project",
-            command=lambda:
-            self.app.delete_project_view(project.id)
-        )
-
-        # IMPORTANT:
-        # Popup directly next to the three-dot button.
-        self.update_idletasks()
-
-        x = button.winfo_rootx() + button.winfo_width() - 5
-        y = button.winfo_rooty() + button.winfo_height() + 2
-
-        menu.tk_popup(x, y)
-        menu.bind(
-            "<FocusOut>",
-            lambda event: menu.destroy()
-        )
-
-    # =========================================================
-    # METRICS
-    # =========================================================
-
-    def _calculate_metrics(self, project):
-        today = date.today()
-
-        total_weight = sum(
-            float(task.weight)
-            for task in project.tasks
-        )
-
-        if total_weight > 0:
-            progress = sum(
-                float(task.progress_percent) *
-                float(task.weight)
-                for task in project.tasks
-            ) / total_weight
-        else:
-            progress = 0
-
-        total_tasks = len(project.tasks)
-
-        completed_tasks = sum(
-            1
-            for task in project.tasks
-            if task.is_completed()
-        )
-
-        start = project.start_date
-        deadline = project.deadline
-
-        total_days = max(
-            1,
-            (deadline - start).days
-        )
-
-        elapsed_days = (
-            today - start
-        ).days
-
-        time_percent = (
-            elapsed_days / total_days
-        ) * 100
-
-        time_percent = max(
-            0,
-            min(100, time_percent)
-        )
-
-        if today < start:
-            time_text = "Project has not started"
-        elif today >= deadline:
-            time_text = "Deadline reached"
-        else:
-            remaining_days = (
-                deadline - today
-            ).days
-
-            time_text = (
-                f"{remaining_days} day"
-                f"{'' if remaining_days == 1 else 's'} remaining"
-            )
-
-        return {
-            "progress": max(0, min(100, progress)),
-            "time_percent": time_percent,
-            "total_tasks": total_tasks,
-            "completed_tasks": completed_tasks,
-            "time_text": time_text
-        }
-
-    def _deadline_text(self, project, today):
-        if project.deadline < today:
-            days = (today - project.deadline).days
-
-            return (
-                f"{project.deadline.isoformat()}  •  "
-                f"{days} day{'s' if days != 1 else ''} overdue"
-            )
-
-        if project.deadline == today:
-            return "TODAY"
-
-        days = (project.deadline - today).days
-
-        return (
-            f"{project.deadline.isoformat()}  •  "
-            f"{days} day{'s' if days != 1 else ''} left"
-        )
-
-    def _health_text(self, metrics):
-        progress = metrics["progress"]
-        time = metrics["time_percent"]
-
-        if progress >= 100:
-            return "✓ COMPLETED"
-
-        if time >= 100 and progress < 100:
-            return "⚠ OVERDUE"
-
-        if time - progress >= 20:
-            return "⚠ BEHIND"
-
-        if progress >= time:
-            return "✓ ON TRACK"
-
-        return "• WATCH"
-
-    def _health_color(self, metrics):
-        progress = metrics["progress"]
-        time = metrics["time_percent"]
-
-        if progress >= 100:
-            return SUCCESS_COLOR
-
-        if time >= 100 and progress < 100:
-            return DANGER_COLOR
-
-        if time - progress >= 20:
-            return DANGER_COLOR
-
-        if progress >= time:
-            return SUCCESS_COLOR
-
-        return WARNING_COLOR
-
-    # =========================================================
-    # CLICK HANDLING
-    # =========================================================
-
-    def _bind_card_click(
-        self,
-        widget,
-        callback,
-        ignored_widgets=None
-    ):
-        ignored_widgets = ignored_widgets or set()
-
-        def bind_recursive(current):
-            if current in ignored_widgets:
-                return
-
-            if isinstance(
-                current,
-                (
-                    ctk.CTkButton,
-                    ctk.CTkEntry,
-                    ctk.CTkSlider
-                )
-            ):
-                return
-
-            current.bind(
-                "<Button-1>",
-                lambda event: callback(),
-                add="+"
-            )
-
-            for child in current.winfo_children():
-                bind_recursive(child)
-
-        bind_recursive(widget)
+        return card

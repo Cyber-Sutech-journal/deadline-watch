@@ -1,1301 +1,1197 @@
-# app.py
-
 import customtkinter as ctk
 from tkinter import messagebox
-from datetime import date, datetime
+from datetime import date, timedelta
+
+from models.project import Project
+from services.project_manager import ProjectManager
+from services.storage import JSONStorage
 
 from ui.dashboard import Dashboard
 from ui.project_view import ProjectView
-from services.project_manager import ProjectManager
-from services.storage import JSONStorage
-from models.project import Project
-from models.task import Task
 
 
-BG_COLOR = "#0F1117"
-SIDEBAR_COLOR = "#151922"
-PRIMARY_COLOR = "#6C63FF"
-HOVER_COLOR = "#8178FF"
-TEXT_COLOR = "#F5F7FA"
-MUTED_COLOR = "#8E97A8"
+# ============================================================
+# COLORS
+# ============================================================
+
+BG_COLOR = "#0A0E13"
+SIDEBAR_COLOR = "#111720"
+CARD_COLOR = "#171E27"
+
+TEXT_COLOR = "#F4F7FB"
+MUTED_COLOR = "#97A3B3"
+
+PRIMARY = "#6C63FF"
+PRIMARY_HOVER = "#8078FF"
+
+GREEN = "#22C55E"
+GREEN_BG = "#173923"
+
+YELLOW = "#F59E0B"
+YELLOW_BG = "#44340F"
+
+RED = "#EF4444"
+RED_BG = "#441C20"
 
 
 class App(ctk.CTk):
+
     def __init__(self):
         super().__init__()
 
-        self.title("Deadline Watch")
-        self.geometry("1450x900")
-        self.minsize(1150, 720)
-        self.configure(fg_color=BG_COLOR)
+        self.title(
+            "Project Late Again!!!"
+        )
+
+        self.geometry(
+            "1500x920"
+        )
+
+        self.minsize(
+            1200,
+            760
+        )
+
+        ctk.set_appearance_mode(
+            "dark"
+        )
+
+        ctk.set_default_color_theme(
+            "blue"
+        )
+
+        self.configure(
+            fg_color=BG_COLOR
+        )
+
+        # ----------------------------------------------------
+        # DATA
+        # ----------------------------------------------------
 
         self.storage = JSONStorage()
         self.manager = ProjectManager()
 
-        self._load_projects()
+        self.load_projects()
 
-        self.protocol("WM_DELETE_WINDOW", self.on_close)
+        # ----------------------------------------------------
+        # UI REFERENCES
+        # ----------------------------------------------------
 
-        self._build_layout()
+        self.sidebar = None
+        self.main_container = None
 
-    # ---------------------------------------------------------
+        self.dashboard = None
+        self.project_view = None
+
+        self.build_layout()
+
+        self.show_dashboard()
+
+        self.protocol(
+            "WM_DELETE_WINDOW",
+            self.on_close
+        )
+
+    # ========================================================
     # DATA
-    # ---------------------------------------------------------
+    # ========================================================
 
-    def _load_projects(self):
+    def load_projects(self):
+
         try:
             projects = self.storage.load_projects()
-            self.manager.set_projects(projects)
-        except Exception as exc:
-            messagebox.showerror(
-                "Loading Error",
-                f"Could not load projects:\n\n{exc}"
+
+            self.manager.set_projects(
+                projects
             )
 
-    def _save_projects(self):
+        except Exception as error:
+
+            messagebox.showerror(
+                "Load Error",
+                f"Could not load projects.\n\n{error}"
+            )
+
+    def save_projects(self):
+
         try:
-            self.storage.save_projects(self.manager.get_all_projects())
+
+            self.storage.save_projects(
+                self.manager.get_all_projects()
+            )
+
             return True
-        except Exception as exc:
+
+        except Exception as error:
+
             messagebox.showerror(
                 "Save Error",
-                f"Could not save projects:\n\n{exc}"
+                f"Could not save projects.\n\n{error}"
             )
+
             return False
 
-    # ---------------------------------------------------------
-    # LAYOUT
-    # ---------------------------------------------------------
+    # ========================================================
+    # MAIN LAYOUT
+    # ========================================================
 
-    def _build_layout(self):
-        self.grid_columnconfigure(1, weight=1)
-        self.grid_rowconfigure(0, weight=1)
+    def build_layout(self):
 
         self.sidebar = ctk.CTkFrame(
             self,
-            width=245,
+            width=280,
             corner_radius=0,
             fg_color=SIDEBAR_COLOR
         )
-        self.sidebar.grid(row=0, column=0, sticky="nsew")
-        self.sidebar.grid_propagate(False)
+
+        self.sidebar.pack(
+            side="left",
+            fill="y"
+        )
+
+        self.sidebar.pack_propagate(
+            False
+        )
 
         self.main_container = ctk.CTkFrame(
             self,
             fg_color=BG_COLOR,
             corner_radius=0
         )
-        self.main_container.grid(
-            row=0,
-            column=1,
-            sticky="nsew",
-            padx=(0, 12),
-            pady=12
+
+        self.main_container.pack(
+            side="left",
+            fill="both",
+            expand=True
         )
-        self.main_container.grid_rowconfigure(0, weight=1)
-        self.main_container.grid_columnconfigure(0, weight=1)
 
-        self._build_sidebar()
+        self.build_sidebar()
 
-        self.dashboard = Dashboard(
-            self.main_container,
-            app=self,
-            manager=self.manager
-        )
-        self.dashboard.grid(row=0, column=0, sticky="nsew")
+    # ========================================================
+    # SIDEBAR
+    # ========================================================
 
-    def _build_sidebar(self):
-        logo = ctk.CTkLabel(
+    def build_sidebar(self):
+
+        for widget in self.sidebar.winfo_children():
+            widget.destroy()
+
+        title = ctk.CTkLabel(
             self.sidebar,
-            text="DEADLINE WATCH",
-            font=ctk.CTkFont(size=21, weight="bold"),
-            text_color=TEXT_COLOR
+            text="PROJECT\nLATE AGAIN!!!",
+            font=ctk.CTkFont(
+                size=29,
+                weight="bold"
+            ),
+            text_color=TEXT_COLOR,
+            justify="left"
         )
-        logo.pack(
-            anchor="w",
-            padx=24,
-            pady=(30, 6)
+
+        title.pack(
+            padx=25,
+            pady=(35, 5),
+            anchor="w"
         )
 
         subtitle = ctk.CTkLabel(
             self.sidebar,
-            text="Project control center",
-            font=ctk.CTkFont(size=12),
+            text="Entertainment Project Manager",
+            font=ctk.CTkFont(
+                size=14
+            ),
             text_color=MUTED_COLOR
         )
+
         subtitle.pack(
-            anchor="w",
             padx=25,
-            pady=(0, 30)
+            anchor="w"
         )
 
-        self._sidebar_button(
-            "▦   Dashboard",
+        self.create_sidebar_button(
+            "⌂   Dashboard",
             self.show_dashboard
         )
 
-        self._sidebar_button(
-            "＋   Add New Project",
+        self.create_sidebar_button(
+            "+   New Project",
             self.add_project_view
         )
 
-        self._sidebar_button(
-            "↻   Quick Update",
-            self.quick_update
+        separator = ctk.CTkFrame(
+            self.sidebar,
+            height=2,
+            fg_color="#2A3440"
         )
 
-        divider = ctk.CTkFrame(
-            self.sidebar,
-            height=1,
-            fg_color="#272D3A"
-        )
-        divider.pack(
+        separator.pack(
             fill="x",
-            padx=22,
+            padx=25,
             pady=25
         )
 
-        info = ctk.CTkLabel(
-            self.sidebar,
-            text="Everything important\nin one place.",
-            justify="left",
-            font=ctk.CTkFont(size=12),
-            text_color=MUTED_COLOR
-        )
-        info.pack(
-            anchor="w",
-            padx=25
+        count = len(
+            self.manager.get_all_projects()
         )
 
-    def _sidebar_button(self, text, command):
+        count_label = ctk.CTkLabel(
+            self.sidebar,
+            text=f"Projects: {count}",
+            font=ctk.CTkFont(
+                size=17,
+                weight="bold"
+            ),
+            text_color=TEXT_COLOR
+        )
+
+        count_label.pack(
+            padx=25,
+            anchor="w"
+        )
+
+        footer = ctk.CTkLabel(
+            self.sidebar,
+            text="Track progress.\nBeat the deadline.",
+            font=ctk.CTkFont(
+                size=14
+            ),
+            text_color=MUTED_COLOR,
+            justify="left"
+        )
+
+        footer.pack(
+            side="bottom",
+            padx=25,
+            pady=30,
+            anchor="w"
+        )
+
+    def create_sidebar_button(
+        self,
+        text,
+        command
+    ):
+
         button = ctk.CTkButton(
             self.sidebar,
             text=text,
             command=command,
-            height=44,
-            corner_radius=10,
-            anchor="w",
+            width=225,
+            height=52,
+            corner_radius=12,
             fg_color="transparent",
-            hover_color="#202633",
+            hover_color="#202A36",
             text_color=TEXT_COLOR,
-            font=ctk.CTkFont(size=14, weight="bold")
-        )
-        button.pack(
-            fill="x",
-            padx=14,
-            pady=4
+            font=ctk.CTkFont(
+                size=16,
+                weight="bold"
+            ),
+            anchor="w"
         )
 
-    # ---------------------------------------------------------
-    # DASHBOARD
-    # ---------------------------------------------------------
+        button.pack(
+            padx=25,
+            pady=6
+        )
+
+    # ========================================================
+    # NAVIGATION
+    # ========================================================
+
+    def clear_main(self):
+
+        for widget in self.main_container.winfo_children():
+            widget.destroy()
 
     def show_dashboard(self):
-        self.dashboard.refresh()
 
-    # ---------------------------------------------------------
-    # PROJECT VIEW
-    # ---------------------------------------------------------
+        self.clear_main()
 
-    def open_project_view(self, project_id):
-        project = self.manager.get_project(project_id)
+        self.build_sidebar()
 
-        if project is None:
-            messagebox.showerror(
-                "Project Not Found",
-                "This project no longer exists."
-            )
-            return
-
-        ProjectView(
-            self,
-            project=project,
-            app=self
+        self.dashboard = Dashboard(
+            self.main_container,
+            project_manager=self.manager,
+            on_open_project=self.open_project_view,
+            on_edit_project=self.edit_project_view,
+            on_delete_project=self.delete_project_view,
+            on_add_project=self.add_project_view
         )
 
-    # ---------------------------------------------------------
-    # ADD PROJECT
-    # ---------------------------------------------------------
+        self.dashboard.pack(
+            fill="both",
+            expand=True
+        )
+
+        self.project_view = None
+
+    def open_project_view(
+        self,
+        project_id
+    ):
+
+        project = self.manager.get_project(
+            project_id
+        )
+
+        if project is None:
+
+            messagebox.showerror(
+                "Error",
+                "Project was not found."
+            )
+
+            return
+
+        self.clear_main()
+
+        self.project_view = ProjectView(
+            self.main_container,
+            project=project,
+            project_manager=self.manager,
+            storage=self.storage,
+            on_back=self.show_dashboard,
+            on_project_deleted=self.show_dashboard,
+            on_project_updated=self.build_sidebar
+        )
+
+        self.project_view.pack(
+            fill="both",
+            expand=True
+        )
+
+    # ========================================================
+    # CREATE PROJECT
+    # ========================================================
 
     def add_project_view(self):
-        dialog = ctk.CTkToplevel(self)
-        dialog.title("Add New Project")
-        dialog.geometry("620x720")
-        dialog.minsize(560, 650)
-        dialog.configure(fg_color=BG_COLOR)
-        dialog.transient(self)
-        dialog.grab_set()
 
-        dialog.grid_columnconfigure(0, weight=1)
-        dialog.grid_rowconfigure(1, weight=1)
+        dialog = ctk.CTkToplevel(
+            self
+        )
+
+        dialog.title(
+            "Create New Project"
+        )
+
+        dialog.geometry(
+            "650x760"
+        )
+
+        dialog.resizable(
+            False,
+            False
+        )
+
+        dialog.configure(
+            fg_color=BG_COLOR
+        )
+
+        dialog.grab_set()
 
         title = ctk.CTkLabel(
             dialog,
             text="Create New Project",
-            font=ctk.CTkFont(size=27, weight="bold"),
+            font=ctk.CTkFont(
+                size=31,
+                weight="bold"
+            ),
             text_color=TEXT_COLOR
         )
-        title.grid(
-            row=0,
-            column=0,
-            sticky="w",
+
+        title.pack(
             padx=35,
-            pady=(28, 18)
+            pady=(30, 5),
+            anchor="w"
         )
 
-        content = ctk.CTkScrollableFrame(
+        subtitle = ctk.CTkLabel(
+            dialog,
+            text="Create your project and set its deadline.",
+            font=ctk.CTkFont(
+                size=14
+            ),
+            text_color=MUTED_COLOR
+        )
+
+        subtitle.pack(
+            padx=35,
+            pady=(0, 20),
+            anchor="w"
+        )
+
+        # ----------------------------------------------------
+        # Project Name
+        # ----------------------------------------------------
+
+        name_entry = self.create_form_entry(
+            dialog,
+            "Project Name"
+        )
+
+        # ----------------------------------------------------
+        # Description
+        # ----------------------------------------------------
+
+        description_entry = self.create_form_entry(
+            dialog,
+            "Description"
+        )
+
+        # ----------------------------------------------------
+        # Start Date
+        # ----------------------------------------------------
+
+        start_entry = self.create_form_entry(
+            dialog,
+            "Start Date (YYYY-MM-DD)",
+            date.today().isoformat()
+        )
+
+        # ----------------------------------------------------
+        # Deadline choice
+        # ----------------------------------------------------
+
+        deadline_title = ctk.CTkLabel(
+            dialog,
+            text="Deadline",
+            font=ctk.CTkFont(
+                size=15,
+                weight="bold"
+            ),
+            text_color=TEXT_COLOR
+        )
+
+        deadline_title.pack(
+            padx=35,
+            anchor="w",
+            pady=(8, 6)
+        )
+
+        choice_frame = ctk.CTkFrame(
             dialog,
             fg_color="transparent"
         )
-        content.grid(
-            row=1,
-            column=0,
-            sticky="nsew",
-            padx=25
+
+        choice_frame.pack(
+            fill="x",
+            padx=35
         )
 
-        content.grid_columnconfigure(0, weight=1)
-
-        name_entry = self._form_entry(
-            content,
-            "Project Name",
-            "e.g. Website Redesign",
-            0
+        deadline_mode = ctk.StringVar(
+            value="days"
         )
 
-        description_entry = self._form_entry(
-            content,
-            "Description",
-            "What is this project about?",
-            1
+        days_radio = ctk.CTkRadioButton(
+            choice_frame,
+            text="Enter days remaining",
+            variable=deadline_mode,
+            value="days",
+            font=ctk.CTkFont(
+                size=14
+            )
         )
 
-        start_entry = self._form_entry(
-            content,
-            "Start Date",
-            "YYYY-MM-DD",
-            2
+        days_radio.pack(
+            side="left",
+            padx=(0, 30)
         )
 
-        deadline_entry = self._form_entry(
-            content,
-            "Deadline",
-            "YYYY-MM-DD",
-            3
+        date_radio = ctk.CTkRadioButton(
+            choice_frame,
+            text="Enter exact date",
+            variable=deadline_mode,
+            value="date",
+            font=ctk.CTkFont(
+                size=14
+            )
         )
 
-        task_count_entry = self._form_entry(
-            content,
-            "Number of Tasks",
-            "e.g. 5",
-            4
+        date_radio.pack(
+            side="left"
         )
 
-        def create():
+        deadline_entry = self.create_form_entry(
+            dialog,
+            "Days Remaining",
+            "30"
+        )
+
+        # ----------------------------------------------------
+        # Hint
+        # ----------------------------------------------------
+
+        hint = ctk.CTkLabel(
+            dialog,
+            text=(
+                "Example: enter 20 to make the deadline "
+                "20 days from today."
+            ),
+            font=ctk.CTkFont(
+                size=12
+            ),
+            text_color=MUTED_COLOR
+        )
+
+        hint.pack(
+            padx=35,
+            anchor="w",
+            pady=(0, 15)
+        )
+
+        def update_deadline_label():
+
+            if deadline_mode.get() == "days":
+
+                deadline_title.configure(
+                    text="Deadline"
+                )
+
+                deadline_entry.delete(
+                    0,
+                    "end"
+                )
+
+                deadline_entry.insert(
+                    0,
+                    "30"
+                )
+
+                hint.configure(
+                    text=(
+                        "Enter the number of days from today."
+                    )
+                )
+
+                date_radio.configure(
+                    fg_color=PRIMARY
+                )
+
+            else:
+
+                deadline_entry.delete(
+                    0,
+                    "end"
+                )
+
+                deadline_entry.insert(
+                    0,
+                    date.today().isoformat()
+                )
+
+                hint.configure(
+                    text=(
+                        "Enter the exact deadline: YYYY-MM-DD"
+                    )
+                )
+
+        # Radio buttons don't automatically refresh
+        # the entry, so connect them here.
+        days_radio.configure(
+            command=update_deadline_label
+        )
+
+        date_radio.configure(
+            command=update_deadline_label
+        )
+
+        # ----------------------------------------------------
+        # Create
+        # ----------------------------------------------------
+
+        def create_project():
+
             name = name_entry.get().strip()
             description = description_entry.get().strip()
             start_text = start_entry.get().strip()
             deadline_text = deadline_entry.get().strip()
-            count_text = task_count_entry.get().strip()
 
             if not name:
-                messagebox.showerror(
-                    "Invalid Project",
-                    "Project name is required.",
-                    parent=dialog
+
+                messagebox.showwarning(
+                    "Missing Information",
+                    "Project name is required."
                 )
+
                 return
 
             try:
-                start_date = date.fromisoformat(start_text)
-                deadline = date.fromisoformat(deadline_text)
-            except ValueError:
-                messagebox.showerror(
-                    "Invalid Date",
-                    "Use YYYY-MM-DD for dates.",
-                    parent=dialog
-                )
-                return
 
-            if start_date >= deadline:
-                messagebox.showerror(
-                    "Invalid Dates",
-                    "Start date must be before the deadline.",
-                    parent=dialog
-                )
-                return
-
-            try:
-                task_count = int(count_text)
-            except ValueError:
-                messagebox.showerror(
-                    "Invalid Tasks",
-                    "Number of tasks must be a whole number.",
-                    parent=dialog
-                )
-                return
-
-            if task_count < 0:
-                messagebox.showerror(
-                    "Invalid Tasks",
-                    "Number of tasks cannot be negative.",
-                    parent=dialog
-                )
-                return
-
-            tasks = []
-
-            for index in range(task_count):
-                task_title = self._ask_input(
-                    "Task",
-                    f"Task {index + 1} name:"
+                start_date = date.fromisoformat(
+                    start_text
                 )
 
-                if task_title is None:
-                    return
+                if deadline_mode.get() == "days":
 
-                task_title = task_title.strip()
-
-                if not task_title:
-                    messagebox.showerror(
-                        "Invalid Task",
-                        f"Task {index + 1} needs a name.",
-                        parent=dialog
+                    days = int(
+                        deadline_text
                     )
-                    return
 
-                weight_text = self._ask_input(
-                    "Task Weight",
-                    f"Weight for '{task_title}':"
-                )
+                    if days < 0:
+                        raise ValueError(
+                            "Days remaining cannot be negative."
+                        )
 
-                if weight_text is None:
-                    return
-
-                try:
-                    weight = float(weight_text)
-                except ValueError:
-                    messagebox.showerror(
-                        "Invalid Weight",
-                        "Task weight must be a number.",
-                        parent=dialog
+                    deadline = (
+                        date.today()
+                        + timedelta(days=days)
                     )
-                    return
 
-                if weight <= 0:
-                    messagebox.showerror(
-                        "Invalid Weight",
-                        "Task weight must be greater than zero.",
-                        parent=dialog
+                else:
+
+                    deadline = date.fromisoformat(
+                        deadline_text
                     )
-                    return
 
-                tasks.append(
-                    Task(
-                        title=task_title,
-                        weight=weight
+                if start_date >= deadline:
+
+                    raise ValueError(
+                        "Start date must be before deadline."
                     )
-                )
 
-            try:
                 project = Project(
                     name=name,
                     description=description,
                     start_date=start_date,
-                    deadline=deadline,
-                    tasks=tasks
+                    deadline=deadline
                 )
 
-                self.manager.add_project(project)
+                self.manager.add_project(
+                    project
+                )
 
-            except Exception as exc:
+                if self.save_projects():
+
+                    dialog.destroy()
+
+                    self.build_sidebar()
+
+                    self.open_project_view(
+                        project.id
+                    )
+
+            except (
+                ValueError,
+                TypeError
+            ) as error:
+
                 messagebox.showerror(
-                    "Could Not Create Project",
-                    str(exc),
-                    parent=dialog
+                    "Invalid Data",
+                    str(error)
                 )
-                return
 
-            if self._save_projects():
-                dialog.destroy()
-                self.dashboard.refresh()
-
-        buttons = ctk.CTkFrame(
+        button_frame = ctk.CTkFrame(
             dialog,
             fg_color="transparent"
         )
-        buttons.grid(
-            row=2,
-            column=0,
-            sticky="ew",
-            padx=30,
-            pady=20
+
+        button_frame.pack(
+            fill="x",
+            padx=35,
+            pady=25
         )
 
-        buttons.grid_columnconfigure(0, weight=1)
-        buttons.grid_columnconfigure(1, weight=1)
-
-        ctk.CTkButton(
-            buttons,
+        cancel = ctk.CTkButton(
+            button_frame,
             text="Cancel",
             command=dialog.destroy,
-            height=46,
-            fg_color="#252B36",
-            hover_color="#303846"
-        ).grid(
-            row=0,
-            column=0,
-            sticky="ew",
-            padx=(0, 7)
+            width=150,
+            height=50,
+            corner_radius=12,
+            fg_color="#28313D",
+            hover_color="#354150",
+            font=ctk.CTkFont(
+                size=15,
+                weight="bold"
+            )
         )
 
-        ctk.CTkButton(
-            buttons,
+        cancel.pack(
+            side="left"
+        )
+
+        create = ctk.CTkButton(
+            button_frame,
             text="Create Project",
-            command=create,
-            height=46,
-            fg_color=PRIMARY_COLOR,
-            hover_color=HOVER_COLOR
-        ).grid(
-            row=0,
-            column=1,
-            sticky="ew",
-            padx=(7, 0)
+            command=create_project,
+            width=195,
+            height=50,
+            corner_radius=12,
+            fg_color=PRIMARY,
+            hover_color=PRIMARY_HOVER,
+            font=ctk.CTkFont(
+                size=15,
+                weight="bold"
+            )
         )
 
-    def _form_entry(self, parent, label, placeholder, row):
+        create.pack(
+            side="right"
+        )
+
+    # ========================================================
+    # EDIT PROJECT
+    # ========================================================
+
+    def edit_project_view(
+        self,
+        project_id
+    ):
+
+        project = self.manager.get_project(
+            project_id
+        )
+
+        if project is None:
+
+            messagebox.showerror(
+                "Error",
+                "Project was not found."
+            )
+
+            return
+
+        dialog = ctk.CTkToplevel(
+            self
+        )
+
+        dialog.title(
+            "Edit Project"
+        )
+
+        dialog.geometry(
+            "650x760"
+        )
+
+        dialog.resizable(
+            False,
+            False
+        )
+
+        dialog.configure(
+            fg_color=BG_COLOR
+        )
+
+        dialog.grab_set()
+
+        title = ctk.CTkLabel(
+            dialog,
+            text="Edit Project",
+            font=ctk.CTkFont(
+                size=31,
+                weight="bold"
+            ),
+            text_color=TEXT_COLOR
+        )
+
+        title.pack(
+            padx=35,
+            pady=(30, 25),
+            anchor="w"
+        )
+
+        name_entry = self.create_form_entry(
+            dialog,
+            "Project Name",
+            project.name
+        )
+
+        description_entry = self.create_form_entry(
+            dialog,
+            "Description",
+            project.description
+        )
+
+        start_entry = self.create_form_entry(
+            dialog,
+            "Start Date (YYYY-MM-DD)",
+            project.start_date.isoformat()
+        )
+
+        # ----------------------------------------------------
+        # Deadline choice
+        # ----------------------------------------------------
+
+        deadline_title = ctk.CTkLabel(
+            dialog,
+            text="Deadline",
+            font=ctk.CTkFont(
+                size=15,
+                weight="bold"
+            ),
+            text_color=TEXT_COLOR
+        )
+
+        deadline_title.pack(
+            padx=35,
+            anchor="w",
+            pady=(8, 6)
+        )
+
+        choice_frame = ctk.CTkFrame(
+            dialog,
+            fg_color="transparent"
+        )
+
+        choice_frame.pack(
+            fill="x",
+            padx=35
+        )
+
+        deadline_mode = ctk.StringVar(
+            value="days"
+        )
+
+        days_radio = ctk.CTkRadioButton(
+            choice_frame,
+            text="Days remaining",
+            variable=deadline_mode,
+            value="days",
+            font=ctk.CTkFont(
+                size=14
+            )
+        )
+
+        days_radio.pack(
+            side="left",
+            padx=(0, 30)
+        )
+
+        date_radio = ctk.CTkRadioButton(
+            choice_frame,
+            text="Exact date",
+            variable=deadline_mode,
+            value="date",
+            font=ctk.CTkFont(
+                size=14
+            )
+        )
+
+        date_radio.pack(
+            side="left"
+        )
+
+        current_days = (
+            project.deadline - date.today()
+        ).days
+
+        deadline_entry = self.create_form_entry(
+            dialog,
+            "Days Remaining",
+            str(max(current_days, 0))
+        )
+
+        hint = ctk.CTkLabel(
+            dialog,
+            text="Enter the number of days from today.",
+            font=ctk.CTkFont(
+                size=12
+            ),
+            text_color=MUTED_COLOR
+        )
+
+        hint.pack(
+            padx=35,
+            anchor="w",
+            pady=(0, 25)
+        )
+
+        def switch_mode():
+
+            if deadline_mode.get() == "days":
+
+                current_days = (
+                    project.deadline - date.today()
+                ).days
+
+                deadline_entry.delete(
+                    0,
+                    "end"
+                )
+
+                deadline_entry.insert(
+                    0,
+                    str(max(current_days, 0))
+                )
+
+                hint.configure(
+                    text=(
+                        "Enter the number of days from today."
+                    )
+                )
+
+            else:
+
+                deadline_entry.delete(
+                    0,
+                    "end"
+                )
+
+                deadline_entry.insert(
+                    0,
+                    project.deadline.isoformat()
+                )
+
+                hint.configure(
+                    text=(
+                        "Enter exact date: YYYY-MM-DD"
+                    )
+                )
+
+        days_radio.configure(
+            command=switch_mode
+        )
+
+        date_radio.configure(
+            command=switch_mode
+        )
+
+        def save_project():
+
+            name = name_entry.get().strip()
+            description = description_entry.get().strip()
+            start_text = start_entry.get().strip()
+            deadline_text = deadline_entry.get().strip()
+
+            if not name:
+
+                messagebox.showwarning(
+                    "Missing Information",
+                    "Project name cannot be empty."
+                )
+
+                return
+
+            try:
+
+                new_start = date.fromisoformat(
+                    start_text
+                )
+
+                if deadline_mode.get() == "days":
+
+                    days = int(
+                        deadline_text
+                    )
+
+                    if days < 0:
+                        raise ValueError(
+                            "Days remaining cannot be negative."
+                        )
+
+                    new_deadline = (
+                        date.today()
+                        + timedelta(days=days)
+                    )
+
+                else:
+
+                    new_deadline = date.fromisoformat(
+                        deadline_text
+                    )
+
+                if new_start >= new_deadline:
+
+                    raise ValueError(
+                        "Start date must be before deadline."
+                    )
+
+                project.name = name
+                project.description = description
+                project.start_date = new_start
+                project.deadline = new_deadline
+
+                if self.save_projects():
+
+                    dialog.destroy()
+
+                    if self.project_view is not None:
+
+                        self.open_project_view(
+                            project.id
+                        )
+
+                    else:
+
+                        self.show_dashboard()
+
+            except (
+                ValueError,
+                TypeError
+            ) as error:
+
+                messagebox.showerror(
+                    "Invalid Data",
+                    str(error)
+                )
+
+        button_frame = ctk.CTkFrame(
+            dialog,
+            fg_color="transparent"
+        )
+
+        button_frame.pack(
+            fill="x",
+            padx=35,
+            pady=25
+        )
+
+        cancel = ctk.CTkButton(
+            button_frame,
+            text="Cancel",
+            command=dialog.destroy,
+            width=150,
+            height=50,
+            corner_radius=12,
+            fg_color="#28313D",
+            hover_color="#354150",
+            font=ctk.CTkFont(
+                size=15,
+                weight="bold"
+            )
+        )
+
+        cancel.pack(
+            side="left"
+        )
+
+        save = ctk.CTkButton(
+            button_frame,
+            text="Save Changes",
+            command=save_project,
+            width=195,
+            height=50,
+            corner_radius=12,
+            fg_color=PRIMARY,
+            hover_color=PRIMARY_HOVER,
+            font=ctk.CTkFont(
+                size=15,
+                weight="bold"
+            )
+        )
+
+        save.pack(
+            side="right"
+        )
+
+    # ========================================================
+    # DELETE PROJECT
+    # ========================================================
+
+    def delete_project_view(
+        self,
+        project_id
+    ):
+
+        project = self.manager.get_project(
+            project_id
+        )
+
+        if project is None:
+
+            messagebox.showerror(
+                "Error",
+                "Project was not found."
+            )
+
+            return
+
+        answer = messagebox.askyesno(
+            "Delete Project",
+            f"Are you sure you want to delete:\n\n"
+            f"{project.name}\n\n"
+            f"All tasks inside this project will also be deleted."
+        )
+
+        if not answer:
+            return
+
+        removed = self.manager.remove_project(
+            project_id
+        )
+
+        if removed:
+
+            if self.save_projects():
+
+                self.build_sidebar()
+
+                self.show_dashboard()
+
+    # ========================================================
+    # FORM HELPER
+    # ========================================================
+
+    def create_form_entry(
+        self,
+        parent,
+        label_text,
+        value=""
+    ):
+
         frame = ctk.CTkFrame(
             parent,
             fg_color="transparent"
         )
-        frame.grid(
-            row=row,
-            column=0,
-            sticky="ew",
-            pady=9
+
+        frame.pack(
+            fill="x",
+            padx=35,
+            pady=8
         )
 
-        ctk.CTkLabel(
+        label = ctk.CTkLabel(
             frame,
-            text=label,
-            font=ctk.CTkFont(size=13, weight="bold"),
+            text=label_text,
+            font=ctk.CTkFont(
+                size=15,
+                weight="bold"
+            ),
             text_color=TEXT_COLOR
-        ).pack(
+        )
+
+        label.pack(
             anchor="w",
-            pady=(0, 5)
+            pady=(0, 6)
         )
 
         entry = ctk.CTkEntry(
             frame,
-            height=42,
-            placeholder_text=placeholder
+            height=49,
+            corner_radius=10,
+            fg_color=CARD_COLOR,
+            border_color="#303A48",
+            text_color=TEXT_COLOR,
+            font=ctk.CTkFont(
+                size=15
+            )
         )
-        entry.pack(fill="x")
+
+        entry.pack(
+            fill="x"
+        )
+
+        if value:
+
+            entry.insert(
+                0,
+                value
+            )
 
         return entry
 
-    # ---------------------------------------------------------
-    # EDIT PROJECT
-    # ---------------------------------------------------------
-
-    def edit_project_view(self, project_id):
-        project = self.manager.get_project(project_id)
-
-        if project is None:
-            messagebox.showerror(
-                "Project Not Found",
-                "Project could not be found."
-            )
-            return
-
-        dialog = ctk.CTkToplevel(self)
-        dialog.title("Edit Project")
-        dialog.geometry("570x600")
-        dialog.configure(fg_color=BG_COLOR)
-        dialog.transient(self)
-        dialog.grab_set()
-
-        ctk.CTkLabel(
-            dialog,
-            text=f"Edit: {project.name}",
-            font=ctk.CTkFont(size=25, weight="bold"),
-            text_color=TEXT_COLOR
-        ).pack(
-            anchor="w",
-            padx=30,
-            pady=(28, 5)
-        )
-
-        ctk.CTkLabel(
-            dialog,
-            text="Choose exactly what you want to change.",
-            font=ctk.CTkFont(size=13),
-            text_color=MUTED_COLOR
-        ).pack(
-            anchor="w",
-            padx=30,
-            pady=(0, 22)
-        )
-
-        options = [
-            ("Project Name", "name"),
-            ("Description", "description"),
-            ("Start Date", "start_date"),
-            ("Deadline", "deadline"),
-            ("Tasks", "tasks"),
-        ]
-
-        variables = {}
-
-        container = ctk.CTkFrame(
-            dialog,
-            fg_color="#151922",
-            corner_radius=14
-        )
-        container.pack(
-            fill="both",
-            expand=True,
-            padx=30,
-            pady=(0, 20)
-        )
-
-        for text, key in options:
-            var = ctk.BooleanVar(value=False)
-            variables[key] = var
-
-            ctk.CTkCheckBox(
-                container,
-                text=text,
-                variable=var,
-                height=48,
-                font=ctk.CTkFont(size=15, weight="bold"),
-                text_color=TEXT_COLOR,
-                fg_color=PRIMARY_COLOR,
-                hover_color=HOVER_COLOR
-            ).pack(
-                fill="x",
-                padx=20,
-                pady=7
-            )
-
-        def continue_editing():
-            selected = [
-                key
-                for key, variable in variables.items()
-                if variable.get()
-            ]
-
-            if not selected:
-                messagebox.showwarning(
-                    "Nothing Selected",
-                    "Select at least one section to edit.",
-                    parent=dialog
-                )
-                return
-
-            dialog.destroy()
-            self._edit_selected_fields(project, selected)
-
-        ctk.CTkButton(
-            dialog,
-            text="Continue",
-            command=continue_editing,
-            height=48,
-            fg_color=PRIMARY_COLOR,
-            hover_color=HOVER_COLOR
-        ).pack(
-            fill="x",
-            padx=30,
-            pady=(0, 30)
-        )
-
-    def _edit_selected_fields(self, project, selected):
-        dialog = ctk.CTkToplevel(self)
-        dialog.title("Edit Selected Fields")
-        dialog.geometry("700x760")
-        dialog.configure(fg_color=BG_COLOR)
-        dialog.transient(self)
-        dialog.grab_set()
-
-        dialog.grid_columnconfigure(0, weight=1)
-        dialog.grid_rowconfigure(1, weight=1)
-
-        ctk.CTkLabel(
-            dialog,
-            text="Update Project",
-            font=ctk.CTkFont(size=26, weight="bold"),
-            text_color=TEXT_COLOR
-        ).grid(
-            row=0,
-            column=0,
-            sticky="w",
-            padx=30,
-            pady=(25, 15)
-        )
-
-        content = ctk.CTkScrollableFrame(
-            dialog,
-            fg_color="transparent"
-        )
-        content.grid(
-            row=1,
-            column=0,
-            sticky="nsew",
-            padx=20
-        )
-        content.grid_columnconfigure(0, weight=1)
-
-        entries = {}
-
-        row = 0
-
-        if "name" in selected:
-            ctk.CTkLabel(
-                content,
-                text="Project Name",
-                font=ctk.CTkFont(size=13, weight="bold")
-            ).grid(
-                row=row,
-                column=0,
-                sticky="w",
-                padx=10,
-                pady=(10, 5)
-            )
-
-            entry = ctk.CTkEntry(content, height=42)
-            entry.insert(0, project.name)
-            entry.grid(
-                row=row + 1,
-                column=0,
-                sticky="ew",
-                padx=10,
-                pady=(0, 15)
-            )
-
-            entries["name"] = entry
-            row += 2
-
-        if "description" in selected:
-            ctk.CTkLabel(
-                content,
-                text="Description",
-                font=ctk.CTkFont(size=13, weight="bold")
-            ).grid(
-                row=row,
-                column=0,
-                sticky="w",
-                padx=10,
-                pady=(10, 5)
-            )
-
-            entry = ctk.CTkEntry(content, height=42)
-            entry.insert(0, project.description)
-            entry.grid(
-                row=row + 1,
-                column=0,
-                sticky="ew",
-                padx=10,
-                pady=(0, 15)
-            )
-
-            entries["description"] = entry
-            row += 2
-
-        if "start_date" in selected:
-            ctk.CTkLabel(
-                content,
-                text="Start Date",
-                font=ctk.CTkFont(size=13, weight="bold")
-            ).grid(
-                row=row,
-                column=0,
-                sticky="w",
-                padx=10,
-                pady=(10, 5)
-            )
-
-            entry = ctk.CTkEntry(content, height=42)
-            entry.insert(0, project.start_date.isoformat())
-            entry.grid(
-                row=row + 1,
-                column=0,
-                sticky="ew",
-                padx=10,
-                pady=(0, 15)
-            )
-
-            entries["start_date"] = entry
-            row += 2
-
-        if "deadline" in selected:
-            ctk.CTkLabel(
-                content,
-                text="Deadline",
-                font=ctk.CTkFont(size=13, weight="bold")
-            ).grid(
-                row=row,
-                column=0,
-                sticky="w",
-                padx=10,
-                pady=(10, 5)
-            )
-
-            entry = ctk.CTkEntry(content, height=42)
-            entry.insert(0, project.deadline.isoformat())
-            entry.grid(
-                row=row + 1,
-                column=0,
-                sticky="ew",
-                padx=10,
-                pady=(0, 15)
-            )
-
-            entries["deadline"] = entry
-            row += 2
-
-        task_entries = []
-
-        if "tasks" in selected:
-            ctk.CTkLabel(
-                content,
-                text="Tasks",
-                font=ctk.CTkFont(size=17, weight="bold"),
-                text_color=TEXT_COLOR
-            ).grid(
-                row=row,
-                column=0,
-                sticky="w",
-                padx=10,
-                pady=(15, 8)
-            )
-            row += 1
-
-            for task in project.tasks:
-                task_frame = ctk.CTkFrame(
-                    content,
-                    fg_color="#1A1F2A",
-                    corner_radius=10
-                )
-                task_frame.grid(
-                    row=row,
-                    column=0,
-                    sticky="ew",
-                    padx=10,
-                    pady=5
-                )
-                task_frame.grid_columnconfigure(0, weight=1)
-
-                title_entry = ctk.CTkEntry(task_frame, height=38)
-                title_entry.insert(0, task.title)
-                title_entry.grid(
-                    row=0,
-                    column=0,
-                    sticky="ew",
-                    padx=10,
-                    pady=(10, 5)
-                )
-
-                weight_entry = ctk.CTkEntry(
-                    task_frame,
-                    width=100,
-                    height=38
-                )
-                weight_entry.insert(0, str(task.weight))
-                weight_entry.grid(
-                    row=1,
-                    column=0,
-                    sticky="w",
-                    padx=10,
-                    pady=(5, 10)
-                )
-
-                task_entries.append(
-                    (task, title_entry, weight_entry)
-                )
-
-                row += 1
-
-        def save():
-            # Stage everything first so invalid input never partially
-            # changes the actual project.
-
-            new_name = project.name
-            new_description = project.description
-            new_start = project.start_date
-            new_deadline = project.deadline
-            staged_tasks = []
-
-            if "name" in selected:
-                new_name = entries["name"].get().strip()
-
-                if not new_name:
-                    messagebox.showerror(
-                        "Invalid Name",
-                        "Project name cannot be empty.",
-                        parent=dialog
-                    )
-                    return
-
-            if "description" in selected:
-                new_description = entries["description"].get().strip()
-
-            try:
-                if "start_date" in selected:
-                    new_start = date.fromisoformat(
-                        entries["start_date"].get().strip()
-                    )
-
-                if "deadline" in selected:
-                    new_deadline = date.fromisoformat(
-                        entries["deadline"].get().strip()
-                    )
-            except ValueError:
-                messagebox.showerror(
-                    "Invalid Date",
-                    "Use YYYY-MM-DD for dates.",
-                    parent=dialog
-                )
-                return
-
-            if new_start >= new_deadline:
-                messagebox.showerror(
-                    "Invalid Dates",
-                    "Start date must be before the deadline.",
-                    parent=dialog
-                )
-                return
-
-            if "tasks" in selected:
-                for task, title_entry, weight_entry in task_entries:
-                    title = title_entry.get().strip()
-
-                    if not title:
-                        messagebox.showerror(
-                            "Invalid Task",
-                            "Task names cannot be empty.",
-                            parent=dialog
-                        )
-                        return
-
-                    try:
-                        weight = float(weight_entry.get().strip())
-                    except ValueError:
-                        messagebox.showerror(
-                            "Invalid Weight",
-                            f"Invalid weight for '{title}'.",
-                            parent=dialog
-                        )
-                        return
-
-                    if weight <= 0:
-                        messagebox.showerror(
-                            "Invalid Weight",
-                            f"Weight for '{title}' must be greater than zero.",
-                            parent=dialog
-                        )
-                        return
-
-                    staged_tasks.append(
-                        (task, title, weight)
-                    )
-
-            project.name = new_name
-            project.description = new_description
-            project.start_date = new_start
-            project.deadline = new_deadline
-
-            for task, title, weight in staged_tasks:
-                task.title = title
-                task.weight = weight
-
-            if self._save_projects():
-                dialog.destroy()
-                self.dashboard.refresh()
-
-        ctk.CTkButton(
-            dialog,
-            text="Save Changes",
-            command=save,
-            height=48,
-            fg_color=PRIMARY_COLOR,
-            hover_color=HOVER_COLOR
-        ).grid(
-            row=2,
-            column=0,
-            sticky="ew",
-            padx=30,
-            pady=20
-        )
-
-    # ---------------------------------------------------------
-    # UPDATE PROGRESS
-    # ---------------------------------------------------------
-
-    def update_project_progress(self, project_id):
-        project = self.manager.get_project(project_id)
-
-        if project is None:
-            messagebox.showerror(
-                "Project Not Found",
-                "Project could not be found."
-            )
-            return
-
-        dialog = ctk.CTkToplevel(self)
-        dialog.title(f"Update Progress — {project.name}")
-        dialog.geometry("760x760")
-        dialog.minsize(650, 650)
-        dialog.configure(fg_color=BG_COLOR)
-        dialog.transient(self)
-        dialog.grab_set()
-
-        dialog.grid_columnconfigure(0, weight=1)
-        dialog.grid_rowconfigure(1, weight=1)
-
-        header = ctk.CTkFrame(
-            dialog,
-            fg_color="transparent"
-        )
-        header.grid(
-            row=0,
-            column=0,
-            sticky="ew",
-            padx=30,
-            pady=(25, 15)
-        )
-        header.grid_columnconfigure(0, weight=1)
-
-        ctk.CTkLabel(
-            header,
-            text="Update Task Progress",
-            font=ctk.CTkFont(size=26, weight="bold"),
-            text_color=TEXT_COLOR
-        ).grid(
-            row=0,
-            column=0,
-            sticky="w"
-        )
-
-        ctk.CTkLabel(
-            header,
-            text=project.name,
-            font=ctk.CTkFont(size=14, weight="bold"),
-            text_color=PRIMARY_COLOR
-        ).grid(
-            row=1,
-            column=0,
-            sticky="w",
-            pady=(4, 0)
-        )
-
-        content = ctk.CTkScrollableFrame(
-            dialog,
-            fg_color="transparent"
-        )
-        content.grid(
-            row=1,
-            column=0,
-            sticky="nsew",
-            padx=20
-        )
-        content.grid_columnconfigure(0, weight=1)
-
-        if not project.tasks:
-            ctk.CTkLabel(
-                content,
-                text="This project has no tasks yet.",
-                font=ctk.CTkFont(size=15),
-                text_color=MUTED_COLOR
-            ).pack(
-                pady=50
-            )
-
-        progress_entries = []
-
-        for index, task in enumerate(project.tasks, start=1):
-            card = ctk.CTkFrame(
-                content,
-                fg_color="#181E28",
-                corner_radius=14
-            )
-            card.pack(
-                fill="x",
-                padx=8,
-                pady=7
-            )
-
-            card.grid_columnconfigure(0, weight=1)
-
-            ctk.CTkLabel(
-                card,
-                text=f"Task {index}",
-                font=ctk.CTkFont(size=11, weight="bold"),
-                text_color=MUTED_COLOR
-            ).grid(
-                row=0,
-                column=0,
-                sticky="w",
-                padx=16,
-                pady=(13, 0)
-            )
-
-            ctk.CTkLabel(
-                card,
-                text=task.title,
-                font=ctk.CTkFont(size=17, weight="bold"),
-                text_color=TEXT_COLOR,
-                anchor="w"
-            ).grid(
-                row=1,
-                column=0,
-                sticky="ew",
-                padx=16,
-                pady=(2, 2)
-            )
-
-            details = ctk.CTkFrame(
-                card,
-                fg_color="transparent"
-            )
-            details.grid(
-                row=2,
-                column=0,
-                sticky="ew",
-                padx=16,
-                pady=(2, 5)
-            )
-
-            ctk.CTkLabel(
-                details,
-                text=f"Weight: {task.weight:g}",
-                font=ctk.CTkFont(size=12, weight="bold"),
-                text_color=MUTED_COLOR
-            ).pack(
-                side="left",
-                padx=(0, 18)
-            )
-
-            status_text = getattr(task.status, "value", str(task.status))
-
-            ctk.CTkLabel(
-                details,
-                text=f"Status: {status_text}",
-                font=ctk.CTkFont(size=12),
-                text_color=MUTED_COLOR
-            ).pack(
-                side="left"
-            )
-
-            if task.deadline:
-                ctk.CTkLabel(
-                    details,
-                    text=f"Deadline: {task.deadline.isoformat()}",
-                    font=ctk.CTkFont(size=12),
-                    text_color=MUTED_COLOR
-                ).pack(
-                    side="right"
-                )
-
-            progress_row = ctk.CTkFrame(
-                card,
-                fg_color="transparent"
-            )
-            progress_row.grid(
-                row=3,
-                column=0,
-                sticky="ew",
-                padx=16,
-                pady=(5, 14)
-            )
-            progress_row.grid_columnconfigure(0, weight=1)
-
-            progress_var = ctk.DoubleVar(
-                value=float(task.progress_percent)
-            )
-
-            slider = ctk.CTkSlider(
-                progress_row,
-                from_=0,
-                to=100,
-                variable=progress_var
-            )
-            slider.grid(
-                row=0,
-                column=0,
-                sticky="ew",
-                padx=(0, 15)
-            )
-
-            percent_label = ctk.CTkLabel(
-                progress_row,
-                text=f"{task.progress_percent:.0f}%",
-                width=65,
-                font=ctk.CTkFont(size=18, weight="bold"),
-                text_color=TEXT_COLOR
-            )
-            percent_label.grid(
-                row=0,
-                column=1
-            )
-
-            def update_label(value, label=percent_label):
-                label.configure(
-                    text=f"{float(value):.0f}%"
-                )
-
-            slider.configure(
-                command=update_label
-            )
-
-            progress_entries.append(
-                (task, progress_var)
-            )
-
-        def save_progress():
-            try:
-                for task, variable in progress_entries:
-                    value = float(variable.get())
-                    project.update_task(
-                        task.id,
-                        new_progress=value
-                    )
-
-                if not self._save_projects():
-                    return
-
-                dialog.destroy()
-                self.dashboard.refresh()
-
-            except Exception as exc:
-                messagebox.showerror(
-                    "Update Failed",
-                    str(exc),
-                    parent=dialog
-                )
-
-        ctk.CTkButton(
-            dialog,
-            text="Save Progress",
-            command=save_progress,
-            height=50,
-            fg_color=PRIMARY_COLOR,
-            hover_color=HOVER_COLOR,
-            font=ctk.CTkFont(size=14, weight="bold")
-        ).grid(
-            row=2,
-            column=0,
-            sticky="ew",
-            padx=30,
-            pady=20
-        )
-
-    # ---------------------------------------------------------
-    # QUICK UPDATE
-    # ---------------------------------------------------------
-
-    def quick_update(self):
-        projects = self.manager.get_all_projects()
-
-        if not projects:
-            messagebox.showinfo(
-                "No Projects",
-                "Create a project first."
-            )
-            return
-
-        dialog = ctk.CTkToplevel(self)
-        dialog.title("Quick Update")
-        dialog.geometry("520x560")
-        dialog.configure(fg_color=BG_COLOR)
-        dialog.transient(self)
-        dialog.grab_set()
-
-        ctk.CTkLabel(
-            dialog,
-            text="Quick Update",
-            font=ctk.CTkFont(size=26, weight="bold")
-        ).pack(
-            anchor="w",
-            padx=30,
-            pady=(28, 5)
-        )
-
-        ctk.CTkLabel(
-            dialog,
-            text="Select a project to update its tasks.",
-            text_color=MUTED_COLOR
-        ).pack(
-            anchor="w",
-            padx=30,
-            pady=(0, 20)
-        )
-
-        scroll = ctk.CTkScrollableFrame(
-            dialog,
-            fg_color="transparent"
-        )
-        scroll.pack(
-            fill="both",
-            expand=True,
-            padx=20,
-            pady=(0, 20)
-        )
-
-        for project in reversed(projects):
-            ctk.CTkButton(
-                scroll,
-                text=project.name,
-                command=lambda p=project: (
-                    dialog.destroy(),
-                    self.update_project_progress(p.id)
-                ),
-                height=48,
-                anchor="w",
-                fg_color="#191F2A",
-                hover_color="#252D3A"
-            ).pack(
-                fill="x",
-                pady=5
-            )
-
-    # ---------------------------------------------------------
-    # DELETE
-    # ---------------------------------------------------------
-
-    def delete_project_view(self, project_id):
-        project = self.manager.get_project(project_id)
-
-        if project is None:
-            return
-
-        confirmed = messagebox.askyesno(
-            "Delete Project",
-            f"Delete '{project.name}'?\n\nThis cannot be undone."
-        )
-
-        if not confirmed:
-            return
-
-        if self.manager.remove_project(project_id):
-            if self._save_projects():
-                self.dashboard.refresh()
-
-    # ---------------------------------------------------------
-    # HELPERS
-    # ---------------------------------------------------------
-
-    def _ask_input(self, title, prompt):
-        dialog = ctk.CTkInputDialog(
-            text=prompt,
-            title=title
-        )
-        return dialog.get_input()
+    # ========================================================
+    # CLOSE
+    # ========================================================
 
     def on_close(self):
-        self._save_projects()
+
+        self.save_projects()
+
         self.destroy()
 
 
 if __name__ == "__main__":
+
     app = App()
+
     app.mainloop()
